@@ -15,9 +15,10 @@ catchError() {
 # -- Atlas app services CLI
 
 
-echo "Goto atlas and create API key"
 # open "https://www.mongodb.com/docs/atlas/app-services/cli/#generate-an-api-key"
+echo "Goto atlas and create API key"
 apiKey=$API_KEY
+echo "API KEY $API_KEY"
 pvtApiKey=$PRIVATE_KEY
 awsID=$AWS_ACCOUNT_ID
 awsRegion=$AWS_REGION
