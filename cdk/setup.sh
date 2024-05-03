@@ -15,7 +15,7 @@ catchError() {
 # -- Atlas app services CLI
 
 
-echo "Goto atlas and create API key"
+echo "Goto atlas and create API key!!"
 # open "https://www.mongodb.com/docs/atlas/app-services/cli/#generate-an-api-key"
 # apiKey=$API_KEY
 # pvtApiKey=$PRIVATE_KEY
@@ -30,7 +30,7 @@ awsRegion="us-east-1"
 
 echo "---------------------- MONGODB ATLAS SETUP ----------------------------"
 
-Update AWS Account ID
+# Update AWS Account ID
 cd ../atlas-backend/Connected-Vehicle/triggers
 sed -i 1 "s/<ACCOUNT_ID>/$awsID/" eventbridge_publish_battery_telemetry.json
 sed -i 1 "s/<REGION>/$awsRegion/" eventbridge_publish_battery_telemetry.json
