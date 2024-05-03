@@ -17,15 +17,15 @@ catchError() {
 
 echo "Goto atlas and create API key"
 # open "https://www.mongodb.com/docs/atlas/app-services/cli/#generate-an-api-key"
-read -p "Enter public key: " apiKey 
-read -p "Enter private key: " pvtApiKey
-read -p "AWS Account ID: " awsID
-read -p "Enter AWS Region: " awsRegion
+apiKey=$API_KEY
+pvtApiKey=$PRIVATE_KEY
+awsID=$AWS_ACCOUNT_ID
+awsRegion=$AWS_REGION
 
 
 echo "---------------------- MONGODB ATLAS SETUP ----------------------------"
 
-# Update AWS Account ID
+Update AWS Account ID
 cd ../atlas-backend/Connected-Vehicle/triggers
 sed -i 1 "s/<ACCOUNT_ID>/$awsID/" eventbridge_publish_battery_telemetry.json
 sed -i 1 "s/<REGION>/$awsRegion/" eventbridge_publish_battery_telemetry.json
@@ -67,14 +67,15 @@ echo "---------------------- AWS SETUP ----------------------------"
 echo "Setting up AWS services!"
 echo "Please enter the following details to setup AWS : "
 ## Input for Sagemaker Endpoint and MongoDB URI
-read -p "Enter Sagemaker Endpoint: " sagemakerEndpoint
-read -p "Enter MongoDB URI: " mongoURI
+sagemakerEndpoint=$SAGEMAKER_ENDPOINT
+mongoURI=$MONGODB_URI
 
 ## Create AWS Eventbus 
 echo "Associating Eventbus..."
 
 # #Get the trigger ID 
-read -p "Enter the trigger ID: " triggerId
+# read -p "Enter the trigger ID: " triggerId
+triggerId=$TRIGGER_ID
 aws events create-event-bus --region $awsRegion --event-source-name aws.partner/mongodb.com/stitch.trigger/$triggerId --name aws.partner/mongodb.com/stitch.trigger/$triggerId 
 
 pwd
@@ -109,7 +110,17 @@ aws iam create-role --role-name cli_connected_vehicle_atlas_to_sagemaker-role --
 
 # Add a wait for role to be created.
 echo "Waiting for the role to be created..."
-sleep 10
+counter=0
+while true; do
+    if aws iam get-role --role-name cli_connected_vehicle_atlas_to_sagemaker-role > /dev/null 2>&1; then
+        echo "Role Created Successfully!"
+        break
+    else
+        echo "Role not yet created, waited for $counter sec"
+        sleep 5
+        let counter+=5
+    fi
+done
 
 ## Create Lambda Function using ECR Image and Role
 echo "Creating Lambda function using the ECR Image..."
@@ -142,6 +153,15 @@ aws events put-targets --rule sagemaker-pull \
     --event-bus-name aws.partner/mongodb.com/stitch.trigger/$triggerId
 
 
+echo "Associating eventbridge with lambda function..."
+aws lambda add-permission \
+--function-name sagemaker-pull-partner-cli \
+--statement-id trigger-event \
+--action 'lambda:InvokeFunction' \
+--principal events.amazonaws.com \
+--source-arn arn:aws:events:$awsRegion:$awsID:rule/aws.partner/mongodb.com/stitch.trigger/$triggerId/sagemaker-pull \
+--region $awsRegion
+
 
 # Create Event bus for Sagemaker to Atlas
 echo "Creating Event bus for Sagemaker to Atlas..."
@@ -158,5 +178,16 @@ aws events put-targets --rule push_to_lambda \
     --targets "Id"="1","Arn"="arn:aws:lambda:$awsRegion:$awsID:function:sagemaker-push-partner-cli" \
     --region $awsRegion \
     --event-bus-name cli_pushing_to_mongodb
+
+
+echo "Associating eventbridge with lambda function..."
+aws lambda add-permission \
+--function-name cli_pushing_to_mongodb \
+--statement-id trigger-event \
+--action 'lambda:InvokeFunction' \
+--principal events.amazonaws.com \
+--source-arn arn:aws:events:$awsRegion:$awsID:rule/push_to_lambda \
+--region $awsRegion
+
 
 echo "------------------  AWS setup completed successfully!  ------------------"
