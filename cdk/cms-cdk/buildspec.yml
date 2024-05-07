@@ -29,7 +29,7 @@ phases:
        
        - echo "Install the ATLAS Application Services"
        
-       - cd atlas-backend
+       - cd ../../atlas-backend
        - npm install -g atlas-app-services-cli
        
        - appservices login --api-key=$ATLAS_PUBLIC_KEY --private-api-key=$ATLAS_PRIVATE_KEY
