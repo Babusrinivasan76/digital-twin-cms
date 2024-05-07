@@ -1,0 +1,7 @@
+{
+    "config_version": 20210101,
+    "app_id": "connected-vehicle-zuffnxt",
+    "name": "Connected-Vehicle",
+    "provider_region": "aws-us-east-1",
+    "deployment_model": "LOCAL"
+}
