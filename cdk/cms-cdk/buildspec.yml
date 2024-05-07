@@ -1,0 +1,54 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+       - echo "Welcome to the CMS deployment of DigitalTwin Solution with MongoDB Atlas and AWS services"
+       - pwd
+       - cd cms-cdk
+       
+       - echo "Installing the dependencies"
+       - npm install -g aws-cdk
+       - pip3 install -r requirements.txt
+       - pip3 install -r requirements-dev.txt
+       
+       - echo " Bootstrap for AWS CDK"
+       - cdk bootstrap
+       
+       
+       - echo "Deploy the MongoDB Atlas"
+       - cdk deploy aws-cms-mongo-atlas-stack --outputs-file atlas_stack_outputs.json --require-approval never
+
+       - echo "Deploy the AWS Lambda, S3 bucket Atlas"
+       - cdk deploy aws-cms-bucket-stack --outputs-file bucket_stack_outputs.json --require-approval never
+
+
+       - export ATLAS_PROJECT_ID=$(cat atlas_stack_outputs.json | jq -r '.["aws-cms-mongo-atlas-stack"].projectId')
+       
+       - echo "ATLAS PROJECT ID $ATLAS_PROJECT_ID"
+       
+       - echo "Install the ATLAS Application Services"
+       
+       - cd atlas-backend
+       - npm install -g atlas-app-services-cli
+       
+       - appservices login --api-key=$ATLAS_PUBLIC_KEY --private-api-key=$ATLAS_PRIVATE_KEY
+       
+       - sleep 1m
+       
+       - sed 's/<AWS_ACCOUNT_ID>/'"$AWS_ACCOUNT_ID"'/g' ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry.json > ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry_new.json
+       
+       - sed 's/<AWS_REGION>/'"$AWS_REGION"'/g' ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry_new.json > ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry.json 
+       
+       - rm ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry_new.json
+
+       - appservices push --local ./Connected-Vehicle --remote Connected-Vehicle --project $ATLAS_PROJECT_ID --yes > application_services.log
+       
+       - cat application_services.log
+       
+       - export ATLAS_APP_ID=$(tail -n 1 application_services.log | awk '{print $NF}' )
+
+       - echo $ATLAS_APP_ID
+       
+       - echo "Creating a user for the app..."
+       - appservices users create --type email --email $ATLAS_APP_USER --password $ATLAS_APP_PWD --app $ATLAS_APP_ID
