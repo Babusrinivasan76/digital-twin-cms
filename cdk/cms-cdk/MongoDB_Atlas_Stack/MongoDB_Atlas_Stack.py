@@ -1,5 +1,5 @@
 from aws_cdk import (
-    Stack, CfnOutput
+    Stack, CfnOutput, Fn
 )
 from constructs import Construct
 from awscdk_resources_mongodbatlas import (AdvancedRegionConfig, AdvancedReplicationSpec, DatabaseUserProps, RoleDefinition,
@@ -61,8 +61,8 @@ class MongoDBAtlasStack(Stack):
                                     ),
                                     profile=''.join(profile_name_var)
                                 )
-        
-       
+        serveraddress = self.atlas_basic_l3.m_cluster.connection_strings.standard_srv
+    
         CfnOutput(self,
                   f"stdUrl",
                   description=f"URL of mongoDb",
@@ -76,11 +76,16 @@ class MongoDBAtlasStack(Stack):
                   description=f"Project ID of Connected_Vehicle_DB",
                   value=self.atlas_basic_l3.m_project.attr_id)
         
+        self.clusteraddress = Fn.select(2, Fn.split('/', serveraddress))
+                  
+        self.Atlas_URI = f"mongodb+srv://" + username + ":" + password + "@" + self.clusteraddress
 
 
     # properties to share with other stacks
     @property
-    def get_connection_string_srv(self):
+    def get_connection_string_srv1(self):
         return self.atlas_basic_l3.m_cluster.connection_strings.standard_srv
     def get_project_id(self):
         return self.atlas_basic_l3.m_project.attr_id
+    def get_connection_string_srv(self):
+        return self.Atlas_URI
