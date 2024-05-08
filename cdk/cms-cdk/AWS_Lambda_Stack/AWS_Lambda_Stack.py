@@ -33,7 +33,7 @@ class LambdaStack(Stack):
         generated_name = mySecret.secret_name
 
         # Create a new lambda function to pull data from MongoDB
-        lambda_function_pull_from_mdb = _lambda.Function(
+        self.lambda_function_pull_from_mdb = _lambda.Function(
             self, "pull_from_mdb",
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="lambda_pull_from_mdb.handler",
@@ -51,11 +51,11 @@ class LambdaStack(Stack):
         secret = secretsmanager.Secret.from_secret_attributes(self, secretname, 
         secret_complete_arn=secretarn)
         
-        secret.grant_read(grantee=lambda_function_pull_from_mdb)
+        secret.grant_read(grantee=self.lambda_function_pull_from_mdb)
 
 
         # Create a new lambda function to push data to MongoDB
-        lambda_function_push_to_mdb = _lambda.Function(
+        self.lambda_function_push_to_mdb = _lambda.Function(
             self, "push_to_mdb",
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="lambda_push_to_mdb.handler",
@@ -70,4 +70,23 @@ class LambdaStack(Stack):
             }
         )
         
-        secret.grant_read(grantee=lambda_function_push_to_mdb)
+        secret.grant_read(grantee=self.lambda_function_push_to_mdb)
+        
+        
+        # CfnOutput(self,
+        #           f"lambda_function_push_to_mdb",
+        #           description=f"ARN of lamabda function : lambda_function_push_to_mdb",
+        #           value=lambda_function_push_to_mdb.function_arn)
+        
+        # CfnOutput(self,
+        #           f"lambda_function_pull_from_mdb",
+        #           description=f"ARN of lamabda function : lambda_function_pull_from_mdb",
+        #           value=lambda_function_push_to_mdb.function_arn)
+        
+        arn_lambda_function_push_to_mdb = self.lambda_function_push_to_mdb.function_arn
+        arn_lambda_function_pull_from_mdb = self.lambda_function_pull_from_mdb.function_arn
+
+
+        # Export the ARNs
+        CfnOutput(self, "LambdaFunctionPushToMdbArn", value=arn_lambda_function_push_to_mdb, export_name="LambdaFunctionPushToMdbArn")
+        CfnOutput(self, "LambdaFunctionPullFromMdbArn", value=arn_lambda_function_pull_from_mdb, export_name="LambdaFunctionPullFromMdbArn")

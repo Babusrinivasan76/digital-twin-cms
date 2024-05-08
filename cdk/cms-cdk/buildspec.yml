@@ -29,7 +29,7 @@ phases:
        
        - echo "Install the ATLAS Application Services"
        
-       - cd ../../atlas-backend
+       - cd atlas-backend
        - npm install -g atlas-app-services-cli
        
        - appservices login --api-key=$ATLAS_PUBLIC_KEY --private-api-key=$ATLAS_PRIVATE_KEY
@@ -47,8 +47,23 @@ phases:
        - cat application_services.log
        
        - export ATLAS_APP_ID=$(tail -n 1 application_services.log | awk '{print $NF}' )
+       
+       - ATLAS_APP_ID=$(appservices  apps list -f json | jq -r '.data[] | select(.["Client App ID"] | startswith("connected-vehicle")) | .["Client App ID"]')
 
        - echo $ATLAS_APP_ID
        
        - echo "Creating a user for the app..."
-       - appservices users create --type email --email $ATLAS_APP_USER --password $ATLAS_APP_PWD --app $ATLAS_APP_ID
+       
+       - USER=$(appservices users list -y --app connected-vehicle-aimlehc -f json | jq -r '.data[] | select(.Email == "demo") | .Email')
+       
+       - if [ -n "$USER" ]; then echo "User already created"; else appservices users create --type email --email $ATLAS_APP_USER --password $ATLAS_APP_PWD --app $ATLAS_APP_ID; fi
+       
+       - cd ..
+       
+       - cdk deploy aws-cms-lambda-stack --outputs-file atlas_lambda_stack_outputs.json --require-approval never
+       
+       - cdk deploy aws-cms-eventbridge-stack --outputs-file atlas_eventbridge_stack_outputs.json --require-approval never
+       
+       
+       
+       
