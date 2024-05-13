@@ -13,7 +13,7 @@ phases:
        - pip3 install -r requirements-dev.txt
        
        - echo " Bootstrap for AWS CDK"
-       - cdk bootstrap
+       - cdk bootstrap --stack-name AWSToolKitCMS
        
        
        - echo "Deploy the MongoDB Atlas"
@@ -49,6 +49,24 @@ phases:
        - export ATLAS_APP_ID=$(tail -n 1 application_services.log | awk '{print $NF}' )
 
        - echo $ATLAS_APP_ID
+
+       - curl_output=$(curl -s --request POST --header 'Content-Type: application/json' --header 'Accept: application/json' --data '{"username": $ATLAS_PUBLIC_KEY, "apiKey": $ATLAS_PRIVATE_KEY}' https://services.cloud.mongodb.com/api/admin/v3.0/auth/providers/mongodb-cloud/login)
+
+       - access_token=$(echo "$curl_output" | jq -r '.access_token')
+
+       - appservices_output=$(appservices apps list)
+       - echo "$appservices_output" > appservices_output.log 
+       - read -r project_id client_app_id <<< "$(awk '$ATLAS_APP_ID {print $2, $3}' appservices_output.log)"
+       - echo "Client App ID: $client_app_id"
+       - echo "Project ID: $project_id"
+
+
+       - curl_output=$(curl -s --request GET \
+          --header "Authorization: Bearer $access_token" \
+          "https://services.cloud.mongodb.com/api/admin/v3.0/groups/$project_id/apps/$client_app_id/triggers")
+       - echo "Curl output: $curl_output"
+       - export TRIGGER_ID=$(echo "$curl_output" | jq -r '.[] | select(.name == "eventbridge_publish_battery_telemetry") | ._id')
+
        
        - echo "Creating a user for the app..."
        - appservices users create --type email --email $ATLAS_APP_USER --password $ATLAS_APP_PWD --app $ATLAS_APP_ID

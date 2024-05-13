@@ -1,0 +1,5 @@
+env/lib/python3.12/site-packages/pip/_vendor/chardet/__pycache__/resultdict.cpython-312.pyc
+.venv/
+cdk.out/
+env/
+*/__pycache__
