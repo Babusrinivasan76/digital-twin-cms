@@ -1,9 +1,9 @@
 from constructs import Construct
 from aws_cdk import (
     RemovalPolicy,
-    aws_events as event,
+    aws_events as events,
     aws_lambda as _lambda,
-    aws_events_targets as targets,
+    aws_events_targets as events_targets,
     Stack,
     CfnOutput,
     Tags,
@@ -11,26 +11,25 @@ from aws_cdk import (
 )
 from parameters.global_args import GlobalArgs
 
-class EventBridgeStack(Stack):
+class EventbridgeStack(Stack):
 
-       def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, lambda_arn: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
- # Define a new Lambda resource
-        my_lambda = _lambda.Function(
-            self, "MyLambda",
-            code=_lambda.Code.from_inline("exports.handler = function(event, ctx, cb) { return cb(null, \"hi\"); }"),
-            handler="index.handler",
-            runtime=_lambda.Runtime.NODEJS_10_X,
-        )
+        # Reference an existing Lambda function
+        my_function = _lambda.Function.from_function_arn(self, "lambda_pull_from_mdb", lambda_arn)
 
         # Define a new EventBridge rule
         rule = events.Rule(
-            self, "Rule",
-            event_pattern=events.EventPattern(
-                source=["aws.ec2"]
-            )
+            self, 
+            'Rule', 
+            event_pattern={
+                "source": ["user-event"]
+                        }
         )
 
-        # Add Lambda as a target to the EventBridge rule
-        rule.add_target(targets.LambdaFunction(my_lambda))
+        # Add the Lambda function as a target
+        rule.add_target(events_targets.LambdaFunction(my_function))
+
+
+        
