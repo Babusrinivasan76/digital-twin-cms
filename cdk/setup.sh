@@ -15,17 +15,12 @@ catchError() {
 # -- Atlas app services CLI
 
 
-echo "Goto atlas and create API key!!"
+echo "Goto atlas and create API key"
 # open "https://www.mongodb.com/docs/atlas/app-services/cli/#generate-an-api-key"
-# apiKey=$API_KEY
-# pvtApiKey=$PRIVATE_KEY
-# awsID=$AWS_ACCOUNT_ID
-# awsRegion=$AWS_REGION
-
-apiKey="aeewzbjo"
-pvtApiKey="20cd1330-cfb4-4ddc-8c96-49ffb3cee1be"
-awsID="979559056307"
-awsRegion="us-east-1"
+apiKey=$API_KEY
+pvtApiKey=$PRIVATE_KEY
+awsID=$AWS_ACCOUNT_ID
+awsRegion=$AWS_REGION
 
 
 echo "---------------------- MONGODB ATLAS SETUP ----------------------------"
@@ -80,7 +75,31 @@ echo "Associating Eventbus..."
 
 # #Get the trigger ID 
 # read -p "Enter the trigger ID: " triggerId
-triggerId=$TRIGGER_ID
+# Login to the MongoDB Cloud API
+curl_output=$(curl -s --request POST \
+  --header 'Content-Type: application/json' \
+  --header 'Accept: application/json' \
+  --data '{"username": $API_KEY, "apiKey": $PRIVATE_KEY }' \
+  https://services.cloud.mongodb.com/api/admin/v3.0/auth/providers/mongodb-cloud/login)
+
+# Extract the access_token using jq
+access_token=$(echo "$curl_output" | jq -r '.access_token')
+
+# appservices login --api-key=aeewzbjo --private-api-key=20cd1330-cfb4-4ddc-8c96-49ffb3cee1be
+# Save in a variable
+appservices_output=$(appservices apps list)
+echo "$appservices_output" > appservices_output.log 
+read -r project_id client_app_id <<< "$(awk '$app_id {print $2, $3}' appservices_output.log)"
+echo "Client App ID: $client_app_id"
+echo "Project ID: $project_id"
+
+
+curl_output=$(curl -s --request GET \
+  --header "Authorization: Bearer $access_token" \
+  "https://services.cloud.mongodb.com/api/admin/v3.0/groups/$project_id/apps/$client_app_id/triggers")
+echo "Curl output: $curl_output"
+triggerId=$(echo "$curl_output" | jq -r '.[] | select(.name == "eventbridge_publish_battery_telemetry") | ._id')
+
 aws events create-event-bus --region $awsRegion --event-source-name aws.partner/mongodb.com/stitch.trigger/$triggerId --name aws.partner/mongodb.com/stitch.trigger/$triggerId 
 
 pwd
@@ -166,7 +185,7 @@ aws lambda add-permission \
 --principal events.amazonaws.com \
 --source-arn arn:aws:events:$awsRegion:$awsID:rule/aws.partner/mongodb.com/stitch.trigger/$triggerId/sagemaker-pull \
 --region $awsRegion
-
+b 
 
 # Create Event bus for Sagemaker to Atlas
 echo "Creating Event bus for Sagemaker to Atlas..."
@@ -187,7 +206,7 @@ aws events put-targets --rule push_to_lambda \
 
 echo "Associating eventbridge with lambda function..."
 aws lambda add-permission \
---function-name cli_pushing_to_mongodb \
+--function-name sagemaker-push-partner-cli \
 --statement-id trigger-event \
 --action 'lambda:InvokeFunction' \
 --principal events.amazonaws.com \
