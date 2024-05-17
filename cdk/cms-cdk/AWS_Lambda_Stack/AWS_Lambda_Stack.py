@@ -12,19 +12,25 @@ from aws_cdk import (
     aws_secretsmanager as secretsmanager,
     SecretValue as SecretValue
 )
-
+import os
+import json
 from parameters.global_args import GlobalArgs
+from dotenv import find_dotenv, load_dotenv
+    
 
 env_name = "dev"
 secretname = "CMS_ATLAS_URL"
 
 
 
-
 # Create a new lambda function pull_from_mdb
 class LambdaStack(Stack):
+    dotenv_path = find_dotenv();
+    load_dotenv("parameters/.env");
+    
+    trigger_id = os.getenv("TRIGGER_ID")
 
-       def __init__(self, scope: Construct, construct_id: str, atlas_uri : str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, atlas_uri : str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         # Create a new secret in Secrets Manager and fetch the ARN
@@ -35,11 +41,36 @@ class LambdaStack(Stack):
         
         generated_name = mySecret.secret_name
 
+        # Define the IAM role with an assume role policy document
+        connected_vehicle_role = iam.Role(
+            self, "cdk_connected_vehicle_atlas_to_sagemaker_role",
+            assumed_by=iam.CompositePrincipal(
+                iam.ServicePrincipal("lambda.amazonaws.com"),
+                iam.ServicePrincipal("sagemaker.amazonaws.com"),
+                iam.ServicePrincipal("events.amazonaws.com")
+            ),
+            role_name="cdk_connected_vehicle_atlas_to_sagemaker_role",
+            inline_policies={
+                "AssumeRolePolicy": iam.PolicyDocument(
+                    statements=[
+                        iam.PolicyStatement(
+                            effect=iam.Effect.ALLOW,
+                            actions=["sts:AssumeRole"],
+                            resources=["*"]
+                        )
+                    ]
+                )
+            }
+        )
+
+
+
         # Create a new lambda function to pull data from MongoDB
         lambda_function_pull_from_mdb = _lambda.Function(
             self, "pull_from_mdb",
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="lambda_pull_from_mdb.handler",
+            role=connected_vehicle_role,
             code=_lambda.Code.from_asset("AWS_Lambda_Stack"),
             environment={
                 "PYTHONPATH" : "dependencies",
@@ -77,9 +108,9 @@ class LambdaStack(Stack):
 
 
 
-          # Create a new Event Bus
-        pull_from_mdb_bus = aws_events.EventBus(self, 'sagemaker-pull-bus',
-            event_bus_name='aws.partner/mongodb.com/stitch.trigger/$TRIGGER_ID',
+        # Create a new Event Bus 
+        pull_from_mdb_bus = aws_events.EventBus(self, 'cli_pulling_from_mongodb',
+            event_source_name = f'aws.partner/mongodb.com/stitch.trigger/{self.trigger_id}'        
         )
 
         # Create a new Rule
