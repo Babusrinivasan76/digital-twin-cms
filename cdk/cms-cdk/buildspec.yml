@@ -5,7 +5,7 @@ phases:
     commands:
        - echo "Welcome to the CMS deployment of DigitalTwin Solution with MongoDB Atlas and AWS services"
        - pwd
-       - cd cms-cdk
+       - cd cdk/cms-cdk
        
        - echo "Installing the dependencies"
        - npm install -g aws-cdk
@@ -13,7 +13,7 @@ phases:
        - pip3 install -r requirements-dev.txt
        
        - echo " Bootstrap for AWS CDK"
-       - cdk bootstrap --stack-name AWSToolKitCMS
+       - cdk bootstrap
        
        
        - echo "Deploy the MongoDB Atlas"
@@ -43,36 +43,42 @@ phases:
        - rm ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry_new.json
 
        - appservices push --local ./Connected-Vehicle --remote Connected-Vehicle --project $ATLAS_PROJECT_ID --yes > application_services.log
+       - appservices  apps list -f json | jq -r '.data[] | select(.["Client App ID"] == env.ATLAS_PROJECT_ID) | .["Project ID"], ._id'
        
        - cat application_services.log
        
        - export ATLAS_APP_ID=$(tail -n 1 application_services.log | awk '{print $NF}' )
        
+       # TODO : Remove the below line; duplicate command
        - ATLAS_APP_ID=$(appservices  apps list -f json | jq -r '.data[] | select(.["Client App ID"] | startswith("connected-vehicle")) | .["Client App ID"]')
 
        - echo $ATLAS_APP_ID
 
-       - curl_output=$(curl -s --request POST --header 'Content-Type: application/json' --header 'Accept: application/json' --data '{"username": $ATLAS_PUBLIC_KEY, "apiKey": $ATLAS_PRIVATE_KEY}' https://services.cloud.mongodb.com/api/admin/v3.0/auth/providers/mongodb-cloud/login)
+       - curl_output=$(curl -s --request POST --header 'Content-Type: application/json' --header 'Accept: application/json' --data "{\"username\": \"$ATLAS_PUBLIC_KEY\", \"apiKey\": \"$ATLAS_PRIVATE_KEY\"}" https://services.cloud.mongodb.com/api/admin/v3.0/auth/providers/mongodb-cloud/login)
 
        - access_token=$(echo "$curl_output" | jq -r '.access_token')
 
        - appservices_output=$(appservices apps list)
        - echo "$appservices_output" > appservices_output.log 
-       - read -r project_id client_app_id <<< "$(awk '$ATLAS_APP_ID {print $2, $3}' appservices_output.log)"
+      #  - read -r project_id client_app_id <<< "$(awk \'$ATLAS_APP_ID {print $2, $3}\' appservices_output.log)"
+       - read -r project_id <<< $(appservices  apps list -f json | jq -r --arg ATLAS_APP_ID "$ATLAS_APP_ID" '.data[] | select(.["Client App ID"] == $ATLAS_APP_ID) | .["Project ID"]')
+       - read -r client_app_id <<< $(appservices  apps list -f json | jq -r --arg ATLAS_APP_ID "$ATLAS_APP_ID" '.data[] | select(.["Client App ID"] == $ATLAS_APP_ID) | .["_id"]')
+       
+      
        - echo "Client App ID: $client_app_id"
        - echo "Project ID: $project_id"
 
 
        - curl_output=$(curl -s --request GET \
-          --header "Authorization: Bearer $access_token" \
-          "https://services.cloud.mongodb.com/api/admin/v3.0/groups/$project_id/apps/$client_app_id/triggers")
+          --header "Authorization: Bearer ${access_token}" \
+          "https://services.cloud.mongodb.com/api/admin/v3.0/groups/${project_id}/apps/${client_app_id}/triggers")
        - echo "Curl output: $curl_output"
        - export TRIGGER_ID=$(echo "$curl_output" | jq -r '.[] | select(.name == "eventbridge_publish_battery_telemetry") | ._id')
-
-       
+       - echo "Trigger ID: $TRIGGER_ID"
        - echo "Creating a user for the app..."
-       
-       - USER=$(appservices users list -y --app connected-vehicle-aimlehc -f json | jq -r '.data[] | select(.Email == "demo") | .Email')
+
+      # New project craeted, user validation not requried.       
+       - USER=$(appservices users list -y --app $ATLAS_APP_ID -f json | jq -r '.data[] | select(.Email == "demo") | .Email')
        
        - if [ -n "$USER" ]; then echo "User already created"; else appservices users create --type email --email $ATLAS_APP_USER --password $ATLAS_APP_PWD --app $ATLAS_APP_ID; fi
        
@@ -81,7 +87,3 @@ phases:
        - cdk deploy aws-cms-lambda-stack --outputs-file atlas_lambda_stack_outputs.json --require-approval never
        
        - cdk deploy aws-cms-eventbridge-stack --outputs-file atlas_eventbridge_stack_outputs.json --require-approval never
-       
-       
-       
-       
