@@ -6,11 +6,22 @@ phases:
        - echo "Welcome to the CMS deployment of DigitalTwin Solution with MongoDB Atlas and AWS services"
        - pwd
        - cd cdk/cms-cdk
+
+      # under the python virtual environment cdk bootstrap is not working. Cfncluster is not able to identify connections_strings attribute. Need some investigation
+      #  - pip3 install virtualenv
+      #  - python3 -m venv .venv
+      #  - source .venv/bin/activate
        
        - echo "Installing the dependencies"
        - npm install -g aws-cdk
+
        - pip3 install -r requirements.txt
        - pip3 install -r requirements-dev.txt
+
+       - cd AWS_Lambda_Stack
+       - pip install --target ./dependencies pymongo numpy
+       - cd ..
+
        
        - echo " Bootstrap for AWS CDK"
        - cdk bootstrap
@@ -34,8 +45,6 @@ phases:
        
        - appservices login --api-key=$ATLAS_PUBLIC_KEY --private-api-key=$ATLAS_PRIVATE_KEY
        
-       - sleep 1m
-       
        - sed 's/<AWS_ACCOUNT_ID>/'"$AWS_ACCOUNT_ID"'/g' ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry.json > ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry_new.json
        
        - sed 's/<AWS_REGION>/'"$AWS_REGION"'/g' ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry_new.json > ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry.json 
@@ -43,47 +52,62 @@ phases:
        - rm ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry_new.json
 
        - appservices push --local ./Connected-Vehicle --remote Connected-Vehicle --project $ATLAS_PROJECT_ID --yes > application_services.log
-       - appservices  apps list -f json | jq -r '.data[] | select(.["Client App ID"] == env.ATLAS_PROJECT_ID) | .["Project ID"], ._id'
+       #- appservices  apps list -f json | jq -r '.data[] | select(.["Client App ID"] == env.ATLAS_PROJECT_ID) | .["Project ID"], ._id'
        
        - cat application_services.log
        
        - export ATLAS_APP_ID=$(tail -n 1 application_services.log | awk '{print $NF}' )
        
        # TODO : Remove the below line; duplicate command
-       - ATLAS_APP_ID=$(appservices  apps list -f json | jq -r '.data[] | select(.["Client App ID"] | startswith("connected-vehicle")) | .["Client App ID"]')
+       #- ATLAS_APP_ID=$(appservices  apps list -f json | jq -r '.data[] | select(.["Client App ID"] | startswith("connected-vehicle")) | .["Client App ID"]')
 
        - echo $ATLAS_APP_ID
 
        - curl_output=$(curl -s --request POST --header 'Content-Type: application/json' --header 'Accept: application/json' --data "{\"username\": \"$ATLAS_PUBLIC_KEY\", \"apiKey\": \"$ATLAS_PRIVATE_KEY\"}" https://services.cloud.mongodb.com/api/admin/v3.0/auth/providers/mongodb-cloud/login)
 
-       - access_token=$(echo "$curl_output" | jq -r '.access_token')
+       - ACCESS_TOKEN=$(echo "$curl_output" | jq -r '.access_token')
 
-       - appservices_output=$(appservices apps list)
-       - echo "$appservices_output" > appservices_output.log 
+       - APPSERVICES_OUTPUT=$(appservices apps list)
+       - echo "$APPSERVICES_OUTPUT" > appservices_output.log 
       #  - read -r project_id client_app_id <<< "$(awk \'$ATLAS_APP_ID {print $2, $3}\' appservices_output.log)"
-       - read -r project_id <<< $(appservices  apps list -f json | jq -r --arg ATLAS_APP_ID "$ATLAS_APP_ID" '.data[] | select(.["Client App ID"] == $ATLAS_APP_ID) | .["Project ID"]')
-       - read -r client_app_id <<< $(appservices  apps list -f json | jq -r --arg ATLAS_APP_ID "$ATLAS_APP_ID" '.data[] | select(.["Client App ID"] == $ATLAS_APP_ID) | .["_id"]')
+       - read -r PROJECT_ID <<< $(appservices  apps list -f json | jq -r --arg ATLAS_APP_ID "$ATLAS_APP_ID" '.data[] | select(.["Client App ID"] == $ATLAS_APP_ID) | .["Project ID"]')
+       - read -r _ID <<< $(appservices  apps list -f json | jq -r --arg ATLAS_APP_ID "$ATLAS_APP_ID" '.data[] | select(.["Client App ID"] == $ATLAS_APP_ID) | .["_id"]')
        
       
-       - echo "Client App ID: $client_app_id"
-       - echo "Project ID: $project_id"
+       - echo " _ID: $_ID"
+       - echo "Project ID: $PROJECT_ID"
+       - echo "Client APP ID: $ATLAS_APP_ID"
 
 
        - curl_output=$(curl -s --request GET \
-          --header "Authorization: Bearer ${access_token}" \
-          "https://services.cloud.mongodb.com/api/admin/v3.0/groups/${project_id}/apps/${client_app_id}/triggers")
+          --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+          "https://services.cloud.mongodb.com/api/admin/v3.0/groups/${PROJECT_ID}/apps/${_ID}/triggers")
        - echo "Curl output: $curl_output"
        - export TRIGGER_ID=$(echo "$curl_output" | jq -r '.[] | select(.name == "eventbridge_publish_battery_telemetry") | ._id')
        - echo "Trigger ID: $TRIGGER_ID"
        - echo "Creating a user for the app..."
 
-      # New project craeted, user validation not requried.       
-       - USER=$(appservices users list -y --app $ATLAS_APP_ID -f json | jq -r '.data[] | select(.Email == "demo") | .Email')
+      # New project created, user validation not requried.       
+      # - USER=$(appservices users list -y --app $ATLAS_APP_ID -f json | jq -r '.data[] | select(.Email == "demo") | .Email')
        
-       - if [ -n "$USER" ]; then echo "User already created"; else appservices users create --type email --email $ATLAS_APP_USER --password $ATLAS_APP_PWD --app $ATLAS_APP_ID; fi
+       - appservices users create --type email --email $ATLAS_APP_USER --password $ATLAS_APP_PWD --app $ATLAS_APP_ID
        
        - cd ..
        
        - cdk deploy aws-cms-lambda-stack --outputs-file atlas_lambda_stack_outputs.json --require-approval never
+
+
+       # Need to check if the below one is required
+       #- cdk deploy aws-cms-eventbridge-stack --outputs-file atlas_eventbridge_stack_outputs.json --require-approval never
+
+       - cd ../../vehicle-ts 
+
+       - sed 's/<--YOUR APP SERVICES ID-->/'$ATLAS_APP_ID'/g' ./src/realm/config.ts > ./src/realm/config.ts_new
        
-       - cdk deploy aws-cms-eventbridge-stack --outputs-file atlas_eventbridge_stack_outputs.json --require-approval never
+       - mv ./src/realm/config.ts ./src/realm/config_template
+
+       - mv ./src/realm/config.ts_new ./src/realm/config.ts
+
+       - npm install
+
+       - npm run build

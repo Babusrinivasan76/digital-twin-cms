@@ -50,6 +50,7 @@ class LambdaStack(Stack):
                 iam.ServicePrincipal("events.amazonaws.com")
             ),
             role_name="cdk_connected_vehicle_atlas_to_sagemaker_role",
+            managed_policies=[iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")],
             inline_policies={
                 "AssumeRolePolicy": iam.PolicyDocument(
                     statements=[
@@ -63,7 +64,8 @@ class LambdaStack(Stack):
             }
         )
 
-
+        aws_region = os.getenv("AWS_REGION")
+        model_endpoint = os.getenv("MODEL_ENDPOINT")
 
         # Create a new lambda function to pull data from MongoDB
         lambda_function_pull_from_mdb = _lambda.Function(
@@ -76,9 +78,8 @@ class LambdaStack(Stack):
                 "PYTHONPATH" : "dependencies",
                 "LOG_LEVEL": "INFO",
                 "APP_ENV": "dev",
-                "REGION_NAME":"us-east-1",  # Update your region
-                "EVENTBUS_NAME":"XXXXX",  # Update the event-bus created 
-                "MODEL_ENDPOINT":"sagemaker-soln-XXXX"  # Update your sagemaker model endpoint
+                "REGION_NAME":aws_region, 
+                "MODEL_ENDPOINT": model_endpoint  
             }
         )
 
@@ -98,9 +99,8 @@ class LambdaStack(Stack):
                 "PYTHONPATH" : "dependencies",
                 "LOG_LEVEL": "INFO",
                 "APP_ENV": "dev",
-                "region_name":"us-east-1",
-                "evnetbus_name":"default",
-                "model_endpoint":"sagemaker-soln-XXXX"
+                "region_name":aws_region,
+                "model_endpoint": model_endpoint 
             }
         )
         
@@ -117,7 +117,7 @@ class LambdaStack(Stack):
         pull_from_mdb_rule = aws_events.Rule(self, 'sagemaker-pull',
             event_bus=pull_from_mdb_bus,
             event_pattern=aws_events.EventPattern(
-                source=['aws.partner/mongodb.com'],
+                source=["aws.partner", "aws.partner/mongodb.com"],
             ),
         )
 

@@ -47,18 +47,18 @@ cms_lambda_stack = LambdaStack(
 )
 
 # Get the ARNs of the Lambda functions
-arn_lambda_function_push_to_mdb = cms_lambda_stack.lambda_function_push_to_mdb.function_arn
-arn_lambda_function_pull_from_mdb = cms_lambda_stack.lambda_function_pull_from_mdb.function_arn
+# arn_lambda_function_push_to_mdb = cms_lambda_stack.lambda_function_push_to_mdb.function_arn
+# arn_lambda_function_pull_from_mdb = cms_lambda_stack.lambda_function_pull_from_mdb.function_arn
 
 
-# Amazon EventBridge Stack to trigger Lambda functions
+# # Amazon EventBridge Stack to trigger Lambda functions
 
-cms_eventbridge_stack = EventbridgeStack(
-    app,
-    f"{app.node.try_get_context('project')}-eventbridge-stack",
-    lambda_arn = arn_lambda_function_pull_from_mdb,
-    description = "EventBridge to capture CDC and trigger Lambda for CMS Digital Twin Solution"
-)
+# cms_eventbridge_stack = EventbridgeStack(
+#     app,
+#     f"{app.node.try_get_context('project')}-eventbridge-stack",
+#     lambda_arn = arn_lambda_function_pull_from_mdb,
+#     description = "EventBridge to capture CDC and trigger Lambda for CMS Digital Twin Solution"
+# )
 
 
 

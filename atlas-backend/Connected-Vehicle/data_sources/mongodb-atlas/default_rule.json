@@ -1,0 +1,17 @@
+{
+    "roles": [
+        {
+            "name": "cms_digital_twin",
+            "apply_when": {},
+            "document_filters": {
+                "read": {},
+                "write": {}
+            },
+            "insert": true,
+            "delete": true,
+            "search": true,
+            "read": true,
+            "write": true
+        }
+    ]
+}

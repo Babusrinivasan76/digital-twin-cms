@@ -10,6 +10,8 @@ class GlobalArgs():
     VERSION = "2023_07_11"
     SUPPORT_EMAIL = ["partners@mongodb.com", ]
     
+    SECRET_NAME ="cfn/atlas/profile/default"
+    AWS_REGION="us-east-1"
     
     DATABASE_NAME = "Connected-Vehicle-DB"
     COLLECTION_NAME = "cms-connected-vehicle"
