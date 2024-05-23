@@ -33,6 +33,9 @@ class LambdaStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, atlas_uri : str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
+
+        
+
         # Create a new secret in Secrets Manager and fetch the ARN
 
         mySecret = secretsmanager.Secret(self, "Secret", secret_name = secretname, secret_string_value = SecretValue.unsafe_plain_text(atlas_uri))
@@ -66,6 +69,7 @@ class LambdaStack(Stack):
 
         aws_region = os.getenv("AWS_REGION")
         model_endpoint = os.getenv("MODEL_ENDPOINT")
+        #event_bus_name = f'aws.partner/mongodb.com/stitch.trigger/{self.trigger_id}'
 
         # Create a new lambda function to pull data from MongoDB
         lambda_function_pull_from_mdb = _lambda.Function(
@@ -79,7 +83,8 @@ class LambdaStack(Stack):
                 "LOG_LEVEL": "INFO",
                 "APP_ENV": "dev",
                 "REGION_NAME":aws_region, 
-                "MODEL_ENDPOINT": model_endpoint  
+                "MODEL_ENDPOINT": model_endpoint, 
+                "EVENTBUS_NAME"  : "cli_pushing_to_mongodb"  
             }
         )
 

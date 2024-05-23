@@ -1,4 +1,4 @@
-import pymongo
+
 import boto3
 import os
 from pymongo import MongoClient
@@ -30,6 +30,7 @@ def handler(event, context):
        
             #Extracting the key/value from the secret
             ATLAS_URI = get_secret_value_response['SecretString']
+        
 
             client = MongoClient(host=ATLAS_URI)
 

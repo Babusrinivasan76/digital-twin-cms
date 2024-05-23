@@ -1,7 +1,5 @@
 import boto3
 import json
-import numpy as np
-import pymongo
 import os
 
 def push_to_eventbus(predicted_value, EVENTBUS_NAME, REGION_NAME, vin):

@@ -1,11 +1,9 @@
-from aws_cdk import (
-    Stack, CfnOutput, Fn
-)
+from aws_cdk import (Stack,CfnOutput,Fn)
 from constructs import Construct
-from awscdk_resources_mongodbatlas import (AdvancedRegionConfig, AdvancedReplicationSpec, DatabaseUserProps, RoleDefinition,
+from awscdk_resources_mongodbatlas import (AdvancedRegionConfig, AdvancedReplicationSpec, DatabaseUserProps,
                                            Specs, AccessListDefinition, IpAccessListProps,
                                            ProjectProps, ClusterProps, AtlasBasic,
-                                           AdvancedRegionConfigProviderName, ProjectApiKey)
+                                           AdvancedRegionConfigProviderName)
 
 from parameters.global_args import GlobalArgs
 import os
@@ -61,6 +59,8 @@ class MongoDBAtlasStack(Stack):
                                     ),
                                     profile=''.join(profile_name_var)
                                 )
+        
+        
         serveraddress = self.atlas_basic_l3.m_cluster.connection_strings.standard_srv
     
         CfnOutput(self,
