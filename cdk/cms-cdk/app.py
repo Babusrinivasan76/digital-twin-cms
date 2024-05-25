@@ -42,7 +42,7 @@ cms_bkt_stack = S3Stack(
 cms_lambda_stack = LambdaStack(
     app,
     f"{app.node.try_get_context('project')}-lambda-stack",
-    atlas_uri = "atlasuri",
+    atlas_uri = atlasuri,
     description = "Lambdas for CMS Digital Twin Solution"
 )
 

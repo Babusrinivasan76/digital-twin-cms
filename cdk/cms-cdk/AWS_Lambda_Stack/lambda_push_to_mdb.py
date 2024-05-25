@@ -34,6 +34,7 @@ def handler(event, context):
 
             client = MongoClient(host=ATLAS_URI)
 
+
             db = client['Integrations']
             collection = db['Sagemaker']
         except ConnectionFailure:
@@ -44,6 +45,9 @@ def handler(event, context):
         # Define the document to update or insert
         filter = {'vin': str(vin)}
         update = {'$set': {'prediction': str(predicted_value)}}
+
+        print (filter)
+        print (update)
 
         # Perform the upsert operation
         try:

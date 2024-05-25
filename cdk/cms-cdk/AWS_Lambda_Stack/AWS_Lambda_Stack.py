@@ -53,7 +53,11 @@ class LambdaStack(Stack):
                 iam.ServicePrincipal("events.amazonaws.com")
             ),
             role_name="cdk_connected_vehicle_atlas_to_sagemaker_role",
-            managed_policies=[iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")],
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole"),
+                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEventBridgeFullAccess"),
+                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSageMakerFullAccess")
+            ],
             inline_policies={
                 "AssumeRolePolicy": iam.PolicyDocument(
                     statements=[
@@ -100,6 +104,7 @@ class LambdaStack(Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="lambda_push_to_mdb.handler",
             code=_lambda.Code.from_asset("AWS_Lambda_Stack"),
+            role=connected_vehicle_role,
             environment={
                 "PYTHONPATH" : "dependencies",
                 "LOG_LEVEL": "INFO",
