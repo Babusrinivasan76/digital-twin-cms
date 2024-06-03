@@ -19,7 +19,7 @@ phases:
        - pip3 install -r requirements-dev.txt
 
        - cd AWS_Lambda_Stack
-       - pip install --target ./dependencies pymongo numpy
+       - pip install --target ./dependencies pymongo boto3  --upgrade
        - cd ..
 
        
@@ -40,15 +40,15 @@ phases:
        
        - echo "Install the ATLAS Application Services"
        
-       - cd atlas-backend
+       - cd atlas-backend 
        - npm install -g atlas-app-services-cli
        
        - appservices login --api-key=$ATLAS_PUBLIC_KEY --private-api-key=$ATLAS_PRIVATE_KEY
        
-       - sed 's/<AWS_ACCOUNT_ID>/'"$AWS_ACCOUNT_ID"'/g' ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry.json > ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry_new.json
-       
+       - sed 's/<AWS_ACCOUNT_ID>/'"$AWS_ACCOUNT_ID"'/g' ./eventbridge_publish_battery_telemetry_template.json > ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry_new.json
+
        - sed 's/<AWS_REGION>/'"$AWS_REGION"'/g' ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry_new.json > ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry.json 
-       
+
        - rm ./Connected-Vehicle/triggers/eventbridge_publish_battery_telemetry_new.json
 
        - appservices push --local ./Connected-Vehicle --remote Connected-Vehicle --project $ATLAS_PROJECT_ID --yes > application_services.log
@@ -63,7 +63,7 @@ phases:
 
        - echo $ATLAS_APP_ID
 
-       - curl_output=$(curl -s --request POST --header 'Content-Type: application/json' --header 'Accept: application/json' --data "{\"username\": \"$ATLAS_PUBLIC_KEY\", \"apiKey\": \"$ATLAS_PRIVATE_KEY\"}" https://services.cloud.mongodb.com/api/admin/v3.0/auth/providers/mongodb-cloud/login)
+       - curl_output=$(curl -s --request POST --header 'Content-Type:application/json' --header 'Accept:application/json'  --data "{\"username\":\"$ATLAS_PUBLIC_KEY\", \"apiKey\": \"$ATLAS_PRIVATE_KEY\"}" https://services.cloud.mongodb.com/api/admin/v3.0/auth/providers/mongodb-cloud/login)
 
        - ACCESS_TOKEN=$(echo "$curl_output" | jq -r '.access_token')
 
@@ -80,7 +80,7 @@ phases:
 
 
        - curl_output=$(curl -s --request GET \
-          --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+          --header "Authorization:Bearer ${ACCESS_TOKEN}" \
           "https://services.cloud.mongodb.com/api/admin/v3.0/groups/${PROJECT_ID}/apps/${_ID}/triggers")
        - echo "Curl output: $curl_output"
        - export TRIGGER_ID=$(echo "$curl_output" | jq -r '.[] | select(.name == "eventbridge_publish_battery_telemetry") | ._id')
@@ -88,9 +88,11 @@ phases:
        - echo "Creating a user for the app..."
 
       # New project created, user validation not requried.       
-      # - USER=$(appservices users list -y --app $ATLAS_APP_ID -f json | jq -r '.data[] | select(.Email == "demo") | .Email')
+       - USER=$(appservices users list -y --app $ATLAS_APP_ID -f json | jq -r '.data[] | select(.Email == "democms") | .Email')
+
+       - echo $USER
        
-       - appservices users create --type email --email $ATLAS_APP_USER --password $ATLAS_APP_PWD --app $ATLAS_APP_ID
+       - if [ -n "$USER" ]; then echo "Success"; else appservices users create --type email --email $ATLAS_APP_USER --password $ATLAS_APP_PWD --app $ATLAS_APP_ID; fi
        
        - cd ..
        
@@ -102,12 +104,10 @@ phases:
 
        - cd ../../vehicle-ts 
 
-       - sed 's/<--YOUR APP SERVICES ID-->/'$ATLAS_APP_ID'/g' ./src/realm/config.ts > ./src/realm/config.ts_new
-       
-       - mv ./src/realm/config.ts ./src/realm/config_template
-
-       - mv ./src/realm/config.ts_new ./src/realm/config.ts
+       - sed 's/<--YOUR APP SERVICES ID-->/'$ATLAS_APP_ID'/g' ./src/realm/config_template > ./src/realm/config.ts
 
        - npm install
 
        - npm run build
+       
+       - npm start

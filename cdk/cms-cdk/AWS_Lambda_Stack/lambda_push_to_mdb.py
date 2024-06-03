@@ -1,6 +1,5 @@
 
 import boto3
-import os
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, OperationFailure
 
@@ -13,8 +12,8 @@ def handler(event, context):
         predicted_value = event['detail']['predicted_value']
         vin = event['detail']['vin']
 
-        print("prediction: " + str(predicted_value))
-        print("VIN: " + str(vin))
+        # print("prediction: " + str(predicted_value))
+        # print("VIN: " + str(vin))
 
         # Set up MongoDB Atlas connection
         try:
@@ -30,6 +29,8 @@ def handler(event, context):
        
             #Extracting the key/value from the secret
             ATLAS_URI = get_secret_value_response['SecretString']
+
+            # print(ATLAS_URI)
         
 
             client = MongoClient(host=ATLAS_URI)
@@ -37,6 +38,9 @@ def handler(event, context):
 
             db = client['Integrations']
             collection = db['Sagemaker']
+
+            # print(collection)
+
         except ConnectionFailure:
             print('Failed to connect to MongoDB Atlas.')
         except OperationFailure as error:
@@ -46,14 +50,16 @@ def handler(event, context):
         filter = {'vin': str(vin)}
         update = {'$set': {'prediction': str(predicted_value)}}
 
-        print (filter)
-        print (update)
+        # print (filter)
+        # print (update)
 
         # Perform the upsert operation
         try:
             result = collection.update_one(filter, update, upsert=True)
             print(f'{result.modified_count} document(s) updated.')
-        except OperationFailure as error:
+        # except OperationFailure as error:
+        #     print(f'Failed to update or insert document: {error}')
+        except Exception as error:
             print(f'Failed to update or insert document: {error}')
 
     except Exception as e:

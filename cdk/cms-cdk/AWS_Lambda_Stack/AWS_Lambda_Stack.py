@@ -6,6 +6,7 @@ from aws_cdk import (
     aws_lambda as _lambda,
     Stack,
     aws_iam as iam,
+    Duration,
     CfnOutput,
     Tags,
     App,
@@ -56,6 +57,7 @@ class LambdaStack(Stack):
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole"),
                 iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEventBridgeFullAccess"),
+                iam.ManagedPolicy.from_aws_managed_policy_name("SecretsManagerReadWrite"),
                 iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSageMakerFullAccess")
             ],
             inline_policies={
@@ -82,6 +84,7 @@ class LambdaStack(Stack):
             handler="lambda_pull_from_mdb.handler",
             role=connected_vehicle_role,
             code=_lambda.Code.from_asset("AWS_Lambda_Stack"),
+            timeout=Duration.seconds(60),
             environment={
                 "PYTHONPATH" : "dependencies",
                 "LOG_LEVEL": "INFO",
@@ -105,6 +108,7 @@ class LambdaStack(Stack):
             handler="lambda_push_to_mdb.handler",
             code=_lambda.Code.from_asset("AWS_Lambda_Stack"),
             role=connected_vehicle_role,
+            timeout=Duration.seconds(60),
             environment={
                 "PYTHONPATH" : "dependencies",
                 "LOG_LEVEL": "INFO",
@@ -127,7 +131,7 @@ class LambdaStack(Stack):
         pull_from_mdb_rule = aws_events.Rule(self, 'sagemaker-pull',
             event_bus=pull_from_mdb_bus,
             event_pattern=aws_events.EventPattern(
-                source=["aws.partner", "aws.partner/mongodb.com"],
+                source=["aws.partner/mongodb.com"],
             ),
         )
 
