@@ -1,7 +1,7 @@
 pytest==6.2.5
 boto3
-awscdk_resources_mongodbatlas
-aws-cdk-lib
+awscdk_resources_mongodbatlas==1.2.0
+aws-cdk-lib==2.140.0
 constructs>=10.0.0,<11.0.0
-python-dotenv
+python-dotenv==1.0.0
 
