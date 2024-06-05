@@ -24,7 +24,8 @@ phases:
 
        
        - echo " Bootstrap for AWS CDK"
-       - cdk bootstrap
+       
+       - cdk bootstrap aws://$AWS_ACCOUNT_ID/$AWS_REGION
        
        
        - echo "Deploy the MongoDB Atlas"
