@@ -15,10 +15,10 @@ phases:
        - echo "Installing the dependencies"
        - npm install -g aws-cdk
 
-       - pip3 install -r requirements.txt
-       - pip3 install -r requirements-dev.txt
+       - pip3 install -r requirements.txt --upgrade
+       - pip3 install -r requirements-dev.txt --upgrade
 
-       - cd AWS_Lambda_Stack
+       - cd AWS_Lambda_Stack 
        - pip install --target ./dependencies pymongo boto3  --upgrade
        - cd ..
 
@@ -31,8 +31,8 @@ phases:
        - echo "Deploy the MongoDB Atlas"
        - cdk deploy aws-cms-mongo-atlas-stack --outputs-file atlas_stack_outputs.json --require-approval never
 
-       - echo "Deploy the AWS Lambda, S3 bucket Atlas"
-       - cdk deploy aws-cms-bucket-stack --outputs-file bucket_stack_outputs.json --require-approval never
+       #- echo "Deploy the AWS Lambda, S3 bucket Atlas"
+       #- cdk deploy aws-cms-bucket-stack --outputs-file bucket_stack_outputs.json --require-approval never
 
 
        - export ATLAS_PROJECT_ID=$(cat atlas_stack_outputs.json | jq -r '.["aws-cms-mongo-atlas-stack"].projectId')
