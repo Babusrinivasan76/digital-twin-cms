@@ -1,1 +1,0 @@
-echo "AWS CMS testing"
